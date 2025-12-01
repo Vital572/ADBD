@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Formulário de Contato</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f0f0f0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+        }
+        .form-box {
+            width: 350px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+        }
+        button {
+            padding: 10px;
+            width: 100%;
+            background: #007bff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+        #msg {
+            margin-top: 10px;
+            font-weight: bold;
+            color: green;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="form-box">
+    <h2>Formulário de Contato</h2>
+
+    <input type="text" id="nome" placeholder="Seu nome" required>
+    <input type="email" id="email" placeholder="Seu email" required>
+    <textarea id="mensagem" placeholder="Sua mensagem" required></textarea>
+
+    <button onclick="enviarDados()">Enviar</button>
+    <p id="msg"></p>
+</div>
+
+<script>
+    // 🔥 CONFIGURAÇÃO DO SUPABASE (colocar suas chaves aqui)
+    const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
+    const SUPABASE_PUBLIC_KEY = "SUA-CHAVE-ANON";
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+
+    async function enviarDados() {
+
+        let nome = document.getElementById("nome").value;
+        let email = document.getElementById("email").value;
+        let mensagem = document.getElementById("mensagem").value;
+
+        if (!nome || !email || !mensagem) {
+            document.getElementById("msg").innerHTML = "Preencha todos os campos!";
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from("contatos")
+            .insert([
+                { nome: nome, email: email, mensagem: mensagem }
+            ]);
+
+        if (error) {
+            document.getElementById("msg").style.color = "red";
+            document.getElementById("msg").innerHTML = "Erro ao enviar!";
+            console.error(error);
+        } else {
+            document.getElementById("msg").style.color = "green";
+            document.getElementById("msg").innerHTML = "Mensagem enviada com sucesso!";
+            
+            document.getElementById("nome").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("mensagem").value = "";
+        }
+    }
+</script>
+
+</body>
+</html>
