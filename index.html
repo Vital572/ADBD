@@ -1,102 +1,240 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-PT">
 <head>
-    <meta charset="UTF-8">
-    <title>Formulário de Contato</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body {
-            font-family: Arial;
-            background: #f0f0f0;
-            padding: 30px;
-            display: flex;
-            justify-content: center;
-        }
-        .form-box {
-            width: 350px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ccc;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            border: 1px solid #aaa;
-        }
-        button {
-            padding: 10px;
-            width: 100%;
-            background: #007bff;
-            border: none;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 6px;
-        }
-        #msg {
-            margin-top: 10px;
-            font-weight: bold;
-            color: green;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Plataforma de Finalistas – Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+
+    header {
+      background: #2b4b9b;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .container {
+      padding: 20px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    }
+
+    .row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .col {
+      flex: 1 1 400px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    th {
+      background: #eee;
+      font-weight: bold;
+    }
+
+    select {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      margin-bottom: 15px;
+    }
+  </style>
 </head>
 
 <body>
+<header>
+  <h1>Plataforma de Alunos Finalistas • Angola</h1>
+</header>
 
-<div class="form-box">
-    <h2>Formulário de Contato</h2>
+<div class="container">
 
-    <input type="text" id="nome" placeholder="Seu nome" required>
-    <input type="email" id="email" placeholder="Seu email" required>
-    <textarea id="mensagem" placeholder="Sua mensagem" required></textarea>
+  <!-- SELECT ESCOLA -->
+  <div class="card">
+    <h2>Selecionar Escola</h2>
+    <select id="escolaSelect"></select>
+  </div>
 
-    <button onclick="enviarDados()">Enviar</button>
-    <p id="msg"></p>
+  <!-- GRÁFICOS -->
+  <div class="row">
+    <div class="col card">
+      <h2>Finalistas por Província (Ano)</h2>
+      <canvas id="chartProv"></canvas>
+    </div>
+
+    <div class="col card">
+      <h2>Fluxo da Escola Selecionada → Ensino Superior</h2>
+      <canvas id="chartEscola"></canvas>
+    </div>
+  </div>
+
+  <!-- TABELA DE ALUNOS -->
+  <div class="card">
+    <h2>Lista de Alunos Finalistas</h2>
+    <table id="tblAlunos">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Escola</th>
+          <th>Curso</th>
+          <th>Ano</th>
+          <th>Média</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
-    // 🔥 CONFIGURAÇÃO DO SUPABASE (colocar suas chaves aqui)
-    const SUPABASE_URL = "https://fdptwyfnjspifhohpxmp.supabase.co";
-    const SUPABASE_PUBLIC_KEY = "sb_publishable_PmpXTcOkGCPHebuAqhIiag_kUx7Eik6";
+  const API = "http://localhost:3000/api"; // ← troque para sua URL pública quando subir na Vercel
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY);
+  // -------------------------------
+  // PREENCHER SELECT DE ESCOLAS
+  // -------------------------------
+  async function carregarEscolas() {
+    const resp = await fetch(API + "/alunos");
+    const data = await resp.json();
 
-    async function enviarDados() {
+    const escolas = [...new Set(data.map(a => a.id_escola + "|" + a.escola))];
 
-        let nome = document.getElementById("nome").value;
-        let email = document.getElementById("email").value;
-        let mensagem = document.getElementById("mensagem").value;
+    const select = document.getElementById("escolaSelect");
+    select.innerHTML = `<option value="">Selecione uma escola</option>`;
 
-        if (!nome || !email || !mensagem) {
-            document.getElementById("msg").innerHTML = "Preencha todos os campos!";
-            return;
-        }
+    escolas.forEach(item => {
+      const [id, nome] = item.split("|");
+      select.innerHTML += `<option value="${id}">${nome}</option>`;
+    });
 
-        const { data, error } = await supabase
-            .from("contatos")
-            .insert([
-                { nome: nome, email: email, mensagem: mensagem }
-            ]);
+    select.onchange = () => {
+      if (select.value !== "") {
+        carregarGraficoEscola(select.value);
+      }
+    };
+  }
 
-        if (error) {
-            document.getElementById("msg").style.color = "red";
-            document.getElementById("msg").innerHTML = "Erro ao enviar!";
-            console.error(error);
-        } else {
-            document.getElementById("msg").style.color = "green";
-            document.getElementById("msg").innerHTML = "Mensagem enviada com sucesso!";
-            
-            document.getElementById("nome").value = "";
-            document.getElementById("email").value = "";
-            document.getElementById("mensagem").value = "";
-        }
-    }
+  // ------------------------------------------
+  // GRÁFICO: ESTATÍSTICAS POR PROVÍNCIA (VIEW)
+  // ------------------------------------------
+  async function carregarGraficoProv() {
+    const resp = await fetch(API + "/dashboard/provincia");
+    const data = await resp.json();
+
+    const labels = data.map(x => `${x.provincia} (${x.ano_conclusao})`);
+
+    new Chart(document.getElementById("chartProv"), {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Finalistas",
+            data: data.map(x => x.total_finalistas)
+          },
+          {
+            label: "Colocados no ES",
+            data: data.map(x => x.total_colocados)
+          }
+        ]
+      },
+      options: { responsive: true }
+    });
+  }
+
+  // --------------------------------------------------------
+  // GRÁFICO: FLUXO DA ESCOLA SELECIONADA (VIEW ESCOLA)
+  // --------------------------------------------------------
+  async function carregarGraficoEscola(idEscola) {
+    const resp = await fetch(API + "/dashboard/escola/" + idEscola);
+    const data = await resp.json();
+
+    if (data.length === 0) return;
+
+    const labels = data.map(x => x.ano_conclusao);
+
+    new Chart(document.getElementById("chartEscola"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Finalistas",
+            data: data.map(x => x.total_finalistas)
+          },
+          {
+            label: "Candidaturas",
+            data: data.map(x => x.total_candidaturas)
+          },
+          {
+            label: "Colocados",
+            data: data.map(x => x.total_colocados)
+          }
+        ]
+      },
+      options: { responsive: true }
+    });
+  }
+
+  // ---------------------------------------
+  // TABELA DE ALUNOS – LISTAGEM
+  // ---------------------------------------
+  async function carregarTabelaAlunos() {
+    const resp = await fetch(API + "/alunos");
+    const data = await resp.json();
+
+    const tbody = document.querySelector("#tblAlunos tbody");
+    tbody.innerHTML = "";
+
+    data.forEach(a => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${a.nome}</td>
+          <td>${a.escola}</td>
+          <td>${a.curso_medio}</td>
+          <td>${a.ano_conclusao}</td>
+          <td>${a.media_final}</td>
+        </tr>
+      `;
+    });
+  }
+
+  // -----------------------
+  // INICIAR A PÁGINA
+  // -----------------------
+  carregarEscolas();
+  carregarGraficoProv();
+  carregarTabelaAlunos();
 </script>
 
 </body>
 </html>
-
